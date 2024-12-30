@@ -1,0 +1,10 @@
+version: "3.8"
+
+services:
+  synophoto-thumbnail-generator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: synophoto-thumbnail-generator
+    volumes:
+      - ./data:/app/data
