@@ -1,0 +1,9 @@
+*.log
+npm-debug.log*
+*.pid
+.npm
+.env*
+.next
+node_modules/
+@eaDir
+.DS_Store
