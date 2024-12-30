@@ -1,0 +1,1 @@
+# synophoto-thumbnail-generator
