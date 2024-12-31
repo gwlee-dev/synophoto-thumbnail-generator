@@ -1,17 +1,13 @@
-import ffmpeg from "fluent-ffmpeg";
 import fs from "fs";
 import path from "path";
-import sharp from "sharp";
 import SUPPORTED from "./config/supported.json";
-import THUMB_SIZES from "./config/thumb-sizes.json";
+import _THUMB_SIZES from "./config/thumb-sizes.json";
+import { captureFrame, convertImage } from "./lib";
+import type { Thumbnail } from "./types";
 
 const ROOT_DIR = "./data";
 
-interface Thumbnail {
-  size: string;
-  width: number;
-}
-
+const THUMB_SIZES: Thumbnail[] = _THUMB_SIZES.sort((a, b) => b.width - a.width);
 const FILE_TYPES = SUPPORTED.images.concat(SUPPORTED.videos);
 
 async function generateThumbnails(filePath: string): Promise<void> {
@@ -23,6 +19,14 @@ async function generateThumbnails(filePath: string): Promise<void> {
   if (!fs.existsSync(eaDir))
     await fs.promises.mkdir(eaDir, { recursive: true });
 
+  if (SUPPORTED.images.includes(ext)) {
+    await getImageThumbnail(eaDir, filePath);
+  } else if (SUPPORTED.videos.includes(ext)) {
+    await getVideoThumbnail(eaDir, filePath);
+  }
+}
+
+async function getImageThumbnail(eaDir: string, filePath: string) {
   for (const thumb of THUMB_SIZES) {
     const thumbPath = path.join(eaDir, `SYNOPHOTO_THUMB_${thumb.size}.jpg`);
 
@@ -38,48 +42,34 @@ async function generateThumbnails(filePath: string): Promise<void> {
       continue;
     }
 
-    if (SUPPORTED.images.includes(ext)) {
-      await generateImageThumbnail(filePath, thumb, thumbPath);
-    } else if (SUPPORTED.videos.includes(ext)) {
-      await generateVideoThumbnail(filePath, thumb, thumbPath);
+    await convertImage(filePath, thumb, thumbPath);
+  }
+}
+
+async function getVideoThumbnail(eaDir: string, filePath: string) {
+  let framePath;
+  for (const thumb of THUMB_SIZES) {
+    const thumbPath = path.join(eaDir, `SYNOPHOTO_THUMB_${thumb.size}.jpg`);
+
+    if (
+      await fs.promises
+        .access(thumbPath)
+        .then(() => true)
+        .catch(() => false)
+    ) {
+      console.log(
+        `Skipping thumbnail: ${thumb.size} for ${filePath} (already exists)`
+      );
+      continue;
+    }
+
+    if (framePath) {
+      await convertImage(framePath, thumb, thumbPath);
+    } else {
+      await captureFrame(filePath, thumb, thumbPath);
+      framePath = thumbPath;
     }
   }
-}
-
-async function generateImageThumbnail(
-  filePath: string,
-  thumb: Thumbnail,
-  thumbPath: string
-): Promise<void> {
-  try {
-    await sharp(filePath).resize(thumb.width).toFile(thumbPath);
-  } catch (err) {
-    await fs.promises.appendFile(
-      "error.log",
-      `Error generating thumbnail for image: ${filePath}\n`
-    );
-  }
-}
-
-async function generateVideoThumbnail(
-  filePath: string,
-  thumb: Thumbnail,
-  thumbPath: string
-): Promise<void> {
-  return new Promise((resolve, reject) => {
-    ffmpeg(filePath)
-      .outputOptions("-vf", `scale=${thumb.width}:-1`, "-vframes", "1")
-      .output(thumbPath)
-      .on("end", () => resolve())
-      .on("error", (err) => {
-        fs.promises.appendFile(
-          "error.log",
-          `Error generating thumbnail for video: ${filePath}\n`
-        );
-        reject(err);
-      })
-      .run();
-  });
 }
 
 async function walkDir(dir: string): Promise<void> {
