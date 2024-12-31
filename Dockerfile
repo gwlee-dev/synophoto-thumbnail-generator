@@ -1,4 +1,9 @@
-FROM alpine:3.20 AS libs
+ARG ALPINE_VERSION=3.20
+ARG NODE_VERSION=20
+
+FROM alpine:${ALPINE_VERSION} AS libs
+ARG LIBHEIF_VERSION=1.19.5
+ARG LIBVIPS_VERSION=8.16.0
 
 RUN apk add --no-cache \
     build-base python3 cmake autoconf automake libtool \
@@ -15,9 +20,9 @@ ENV LD_LIBRARY_PATH=/usr/local/lib
 
 WORKDIR /usr/src
 
-RUN wget https://github.com/strukturag/libheif/releases/download/v1.19.5/libheif-1.19.5.tar.gz \
-    && tar xf libheif* \
-    && cd libheif* \
+RUN wget https://github.com/strukturag/libheif/releases/download/v$LIBHEIF_VERSION/libheif-$LIBHEIF_VERSION.tar.gz \
+    && tar xf libheif-$LIBHEIF_VERSION.tar.gz \
+    && cd libheif-$LIBHEIF_VERSION \
     && mkdir build && cd build \
     && cmake .. \
     -DCMAKE_INSTALL_PREFIX=/usr/local \
@@ -25,9 +30,9 @@ RUN wget https://github.com/strukturag/libheif/releases/download/v1.19.5/libheif
     -DENABLE_PLUGIN_LOADING=NO \
     && make -j$(nproc) && make install
 
-RUN wget https://github.com/libvips/libvips/releases/download/v8.16.0/vips-8.16.0.tar.xz \
-    && tar xf vips* \
-    && cd vips* \
+RUN wget https://github.com/libvips/libvips/releases/download/v${LIBVIPS_VERSION}/vips-${LIBVIPS_VERSION}.tar.xz \
+    && tar xf vips-${LIBVIPS_VERSION}.tar.xz \
+    && cd vips-${LIBVIPS_VERSION} \
     && meson setup build \
     --prefix=/usr/local \
     --libdir=lib \
@@ -42,7 +47,7 @@ RUN wget https://github.com/libvips/libvips/releases/download/v8.16.0/vips-8.16.
     && meson compile \
     && meson install
 
-FROM node:20-alpine AS base
+FROM node:${NODE_VERSION}-alpine${ALPINE_VERSION} AS base
 RUN corepack enable
 
 FROM base AS builder
@@ -65,7 +70,6 @@ RUN apk --update --no-cache add \
     libjpeg-turbo \
     vips \
     ffmpeg
-
 
 WORKDIR /usr/local
 COPY --from=libs --link /usr/local /patch

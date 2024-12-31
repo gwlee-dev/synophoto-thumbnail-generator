@@ -29,7 +29,7 @@ const logger = {
 };
 
 const limiter = new Bottleneck({
-  maxConcurrent: 5,
+  maxConcurrent: parseInt(process.env.MAX_CONCURRENT || "5"),
   minTime: 200,
 });
 
@@ -59,20 +59,14 @@ async function getImageThumbnail(eaDir: string, filePath: string) {
       .catch(() => false)
       .then((exists) => {
         if (exists) {
-          logger.info(
-            `Skipping thumbnail: ${thumb.size} for ${filePath} (already exists)`
-          );
           return;
         }
 
         return convertImage(filePath, thumb, thumbPath)
-          .then(() =>
-            logger.info(`Generated thumbnail: ${thumb.size} for ${filePath}`)
-          )
           .catch((err) => {
             if (err instanceof Error) {
               return logger.error(
-                `Error generating thumbnail for ${filePath}: ${err.message}`
+                `Error generating thumbnail for ${filePath}: ${err.message}. Thumbnail path: ${thumbPath}`
               );
             }
             throw err;
@@ -93,31 +87,23 @@ async function getVideoThumbnail(eaDir: string, filePath: string) {
   if (!fs.existsSync(firstThumbPath)) {
     try {
       await captureFrame(filePath, firstThumb, firstThumbPath);
-      logger.info(
-        `Generated first thumbnail: ${firstThumb.size} for ${filePath}`
-      );
     } catch (err) {
       if (err instanceof Error)
-        logger.error(
-          `Error generating first thumbnail for ${filePath}: ${err.message}`
+        await logger.error(
+          `Error generating first thumbnail for ${filePath}: ${err.message}. Thumbnail path: ${firstThumbPath}`
         );
-
-      return; // 오류 발생 시 종료
+      return;
     }
   }
 
   const generatePromises = THUMB_SIZES.slice(1).map((thumb) => {
     const thumbPath = path.join(eaDir, `SYNOPHOTO_THUMB_${thumb.size}.jpg`);
     if (!fs.existsSync(thumbPath)) {
-      return convertImage(firstThumbPath, thumb, thumbPath)
-        .then(() =>
-          logger.info(`Generated thumbnail: ${thumb.size} for ${filePath}`)
+      return convertImage(firstThumbPath, thumb, thumbPath).catch((err) =>
+        logger.error(
+          `Error generating thumbnail for ${filePath}: ${err.message}. Thumbnail path: ${thumbPath}`
         )
-        .catch((err) =>
-          logger.error(
-            `Error generating thumbnail for ${filePath}: ${err.message}`
-          )
-        );
+      );
     }
   });
 
@@ -136,9 +122,10 @@ async function walkDir(dir: string): Promise<void> {
       const ext = path.extname(entry.name).toLowerCase().slice(1);
       if (!FILE_TYPES.includes(ext)) continue;
 
-      await logger.info(`Generating thumbnail: ${fullPath}`);
+      await logger.info(`Generating thumbnails for: ${fullPath}`);
       try {
         await limiter.schedule(() => generateThumbnails(fullPath));
+        await logger.info(`Successfully processed: ${fullPath}`);
       } catch (err) {
         if (err instanceof Error)
           await logger.error(

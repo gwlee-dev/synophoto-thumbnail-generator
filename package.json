@@ -7,7 +7,7 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "bake": "docker-compose build",
-    "clean": "rimraf --glob './dist' './data/**/@eaDir'"
+    "clean": "rimraf --glob './dist' './data/**/@eaDir' './logs'"
   },
   "devDependencies": {
     "@types/fluent-ffmpeg": "^2.1.27",
