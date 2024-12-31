@@ -663,6 +663,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"bottleneck@npm:^2.19.5":
+  version: 2.19.5
+  resolution: "bottleneck@npm:2.19.5"
+  checksum: 10c0/b0f72e45b2e0f56a21ba720183f16bef8e693452fb0495d997fa354e42904353a94bd8fd429868e6751bc85e54b6755190519eed5a0ae0a94a5185209ae7c6d0
+  languageName: node
+  linkType: hard
+
 "brace-expansion@npm:^1.1.7":
   version: 1.1.11
   resolution: "brace-expansion@npm:1.1.11"
@@ -3276,6 +3283,7 @@ __metadata:
     "@types/fluent-ffmpeg": "npm:^2.1.27"
     "@types/heic-convert": "npm:^2.1.0"
     "@types/node": "npm:^22.10.2"
+    bottleneck: "npm:^2.19.5"
     eslint: "npm:^8.2.0"
     eslint-config-airbnb-base: "npm:^15.0.0"
     eslint-config-prettier: "npm:^9.1.0"

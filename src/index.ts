@@ -4,6 +4,7 @@ import SUPPORTED from "./config/supported.json";
 import _THUMB_SIZES from "./config/thumb-sizes.json";
 import { captureFrame, convertImage } from "./lib";
 import type { Thumbnail } from "./types";
+import Bottleneck from "bottleneck";
 
 const ROOT_DIR = "./data";
 const LOG_DIR = "./logs";
@@ -12,7 +13,6 @@ const FILE_TYPES = SUPPORTED.images.concat(SUPPORTED.videos);
 
 const getLogger = (filename: string) => async (message: string) => {
   const logDirPath = path.join(LOG_DIR);
-
   if (!fs.existsSync(logDirPath)) {
     await fs.promises.mkdir(logDirPath, { recursive: true });
   }
@@ -22,10 +22,16 @@ const getLogger = (filename: string) => async (message: string) => {
   console.log(message);
   await fs.promises.appendFile(logFilePath, log);
 };
+
 const logger = {
   info: getLogger("process.log"),
   error: getLogger("error.log"),
 };
+
+const limiter = new Bottleneck({
+  maxConcurrent: 5,
+  minTime: 200,
+});
 
 async function generateThumbnails(filePath: string): Promise<void> {
   const baseName = path.basename(filePath);
@@ -44,67 +50,78 @@ async function generateThumbnails(filePath: string): Promise<void> {
 }
 
 async function getImageThumbnail(eaDir: string, filePath: string) {
-  for (const thumb of THUMB_SIZES) {
+  const promises = THUMB_SIZES.map((thumb) => {
     const thumbPath = path.join(eaDir, `SYNOPHOTO_THUMB_${thumb.size}.jpg`);
 
-    if (
-      await fs.promises
-        .access(thumbPath)
-        .then(() => true)
-        .catch(() => false)
-    ) {
-      await logger.info(
-        `Skipping thumbnail: ${thumb.size} for ${filePath} (already exists)`
-      );
-      continue;
-    }
+    return fs.promises
+      .access(thumbPath)
+      .then(() => true)
+      .catch(() => false)
+      .then((exists) => {
+        if (exists) {
+          logger.info(
+            `Skipping thumbnail: ${thumb.size} for ${filePath} (already exists)`
+          );
+          return;
+        }
 
-    try {
-      await convertImage(filePath, thumb, thumbPath);
-      await logger.info(`Generated thumbnail: ${thumb.size} for ${filePath}`);
-    } catch (err) {
-      if (err instanceof Error)
-        await logger.error(
-          `Error generating thumbnail for ${filePath}: ${err.message}`
-        );
-      else throw err;
-    }
-  }
+        return convertImage(filePath, thumb, thumbPath)
+          .then(() =>
+            logger.info(`Generated thumbnail: ${thumb.size} for ${filePath}`)
+          )
+          .catch((err) => {
+            if (err instanceof Error) {
+              return logger.error(
+                `Error generating thumbnail for ${filePath}: ${err.message}`
+              );
+            }
+            throw err;
+          });
+      });
+  });
+
+  await Promise.all(promises);
 }
 
 async function getVideoThumbnail(eaDir: string, filePath: string) {
-  let framePath;
-  for (const thumb of THUMB_SIZES) {
-    const thumbPath = path.join(eaDir, `SYNOPHOTO_THUMB_${thumb.size}.jpg`);
+  const firstThumb = THUMB_SIZES[0];
+  const firstThumbPath = path.join(
+    eaDir,
+    `SYNOPHOTO_THUMB_${firstThumb.size}.jpg`
+  );
 
-    if (
-      await fs.promises
-        .access(thumbPath)
-        .then(() => true)
-        .catch(() => false)
-    ) {
-      await logger.info(
-        `Skipping thumbnail: ${thumb.size} for ${filePath} (already exists)`
-      );
-      continue;
-    }
-
+  if (!fs.existsSync(firstThumbPath)) {
     try {
-      if (framePath) {
-        await convertImage(framePath, thumb, thumbPath);
-      } else {
-        await captureFrame(filePath, thumb, thumbPath);
-        framePath = thumbPath;
-      }
-      await logger.info(`Generated thumbnail: ${thumb.size} for ${filePath}`);
+      await captureFrame(filePath, firstThumb, firstThumbPath);
+      logger.info(
+        `Generated first thumbnail: ${firstThumb.size} for ${filePath}`
+      );
     } catch (err) {
       if (err instanceof Error)
-        await logger.error(
-          `Error generating thumbnail for ${filePath}: ${err.message}`
+        logger.error(
+          `Error generating first thumbnail for ${filePath}: ${err.message}`
         );
-      else throw err;
+
+      return; // 오류 발생 시 종료
     }
   }
+
+  const generatePromises = THUMB_SIZES.slice(1).map((thumb) => {
+    const thumbPath = path.join(eaDir, `SYNOPHOTO_THUMB_${thumb.size}.jpg`);
+    if (!fs.existsSync(thumbPath)) {
+      return convertImage(firstThumbPath, thumb, thumbPath)
+        .then(() =>
+          logger.info(`Generated thumbnail: ${thumb.size} for ${filePath}`)
+        )
+        .catch((err) =>
+          logger.error(
+            `Error generating thumbnail for ${filePath}: ${err.message}`
+          )
+        );
+    }
+  });
+
+  await Promise.all(generatePromises);
 }
 
 async function walkDir(dir: string): Promise<void> {
@@ -121,7 +138,7 @@ async function walkDir(dir: string): Promise<void> {
 
       await logger.info(`Generating thumbnail: ${fullPath}`);
       try {
-        await generateThumbnails(fullPath);
+        await limiter.schedule(() => generateThumbnails(fullPath));
       } catch (err) {
         if (err instanceof Error)
           await logger.error(

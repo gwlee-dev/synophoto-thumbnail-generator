@@ -43,9 +43,9 @@ RUN wget https://github.com/libvips/libvips/releases/download/v8.16.0/vips-8.16.
     && meson install
 
 FROM node:20-alpine AS base
+RUN corepack enable
 
 FROM base AS builder
-RUN corepack enable
 WORKDIR /app
 COPY --link  . .
 RUN yarn install --immutable
@@ -78,5 +78,6 @@ rm -rf /patch
 WORKDIR /app
 COPY --from=builder /app/dist .
 
-RUN npm i fluent-ffmpeg sharp
+COPY --link  package.json yarn.lock .yarnrc.yml /app/
+RUN yarn workspaces focus --production
 CMD ["node", "index.js"]
