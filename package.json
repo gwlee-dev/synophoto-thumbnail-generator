@@ -3,9 +3,11 @@
   "packageManager": "yarn@4.6.0",
   "license": "MIT",
   "scripts": {
+    "dev": "nodemon --watch 'src/**/*.ts' --exec 'yarn clean && yarn build && yarn start'",
     "build": "tsc",
     "start": "node dist/index.js",
-    "bake": "docker-compose build"
+    "bake": "docker-compose build",
+    "clean": "rimraf --glob './dist' './data/**/@eaDir'"
   },
   "devDependencies": {
     "@types/fluent-ffmpeg": "^2.1.27",
@@ -16,7 +18,9 @@
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-import": "^2.31.0",
     "eslint-plugin-prettier": "^5.2.1",
+    "nodemon": "^3.1.9",
     "prettier": "^3.4.2",
+    "rimraf": "^6.0.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.7.2"
   },

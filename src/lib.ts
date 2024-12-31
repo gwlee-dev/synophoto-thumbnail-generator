@@ -9,7 +9,13 @@ export async function convertImage(
   thumbPath: string
 ): Promise<void> {
   try {
-    await sharp(filePath).resize(thumb.width).toFile(thumbPath);
+    await sharp(filePath)
+      .resize(thumb.width)
+      .toFile(thumbPath, (err, info) => {
+        if (err) {
+          console.error("Error converting file:", err);
+        }
+      });
   } catch (err) {
     await fs.promises.appendFile(
       "error.log",
