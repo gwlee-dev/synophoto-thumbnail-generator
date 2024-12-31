@@ -6,9 +6,26 @@ import { captureFrame, convertImage } from "./lib";
 import type { Thumbnail } from "./types";
 
 const ROOT_DIR = "./data";
-
+const LOG_DIR = "./logs";
 const THUMB_SIZES: Thumbnail[] = _THUMB_SIZES.sort((a, b) => b.width - a.width);
 const FILE_TYPES = SUPPORTED.images.concat(SUPPORTED.videos);
+
+const getLogger = (filename: string) => async (message: string) => {
+  const logDirPath = path.join(LOG_DIR);
+
+  if (!fs.existsSync(logDirPath)) {
+    await fs.promises.mkdir(logDirPath, { recursive: true });
+  }
+
+  const logFilePath = path.join(logDirPath, filename);
+  const log = `[${new Date().toISOString()}] ${message}\n`;
+  console.log(message);
+  await fs.promises.appendFile(logFilePath, log);
+};
+const logger = {
+  info: getLogger("process.log"),
+  error: getLogger("error.log"),
+};
 
 async function generateThumbnails(filePath: string): Promise<void> {
   const baseName = path.basename(filePath);
@@ -36,13 +53,22 @@ async function getImageThumbnail(eaDir: string, filePath: string) {
         .then(() => true)
         .catch(() => false)
     ) {
-      console.log(
+      await logger.info(
         `Skipping thumbnail: ${thumb.size} for ${filePath} (already exists)`
       );
       continue;
     }
 
-    await convertImage(filePath, thumb, thumbPath);
+    try {
+      await convertImage(filePath, thumb, thumbPath);
+      await logger.info(`Generated thumbnail: ${thumb.size} for ${filePath}`);
+    } catch (err) {
+      if (err instanceof Error)
+        await logger.error(
+          `Error generating thumbnail for ${filePath}: ${err.message}`
+        );
+      else throw err;
+    }
   }
 }
 
@@ -57,17 +83,26 @@ async function getVideoThumbnail(eaDir: string, filePath: string) {
         .then(() => true)
         .catch(() => false)
     ) {
-      console.log(
+      await logger.info(
         `Skipping thumbnail: ${thumb.size} for ${filePath} (already exists)`
       );
       continue;
     }
 
-    if (framePath) {
-      await convertImage(framePath, thumb, thumbPath);
-    } else {
-      await captureFrame(filePath, thumb, thumbPath);
-      framePath = thumbPath;
+    try {
+      if (framePath) {
+        await convertImage(framePath, thumb, thumbPath);
+      } else {
+        await captureFrame(filePath, thumb, thumbPath);
+        framePath = thumbPath;
+      }
+      await logger.info(`Generated thumbnail: ${thumb.size} for ${filePath}`);
+    } catch (err) {
+      if (err instanceof Error)
+        await logger.error(
+          `Error generating thumbnail for ${filePath}: ${err.message}`
+        );
+      else throw err;
     }
   }
 }
@@ -84,12 +119,20 @@ async function walkDir(dir: string): Promise<void> {
       const ext = path.extname(entry.name).toLowerCase().slice(1);
       if (!FILE_TYPES.includes(ext)) continue;
 
-      console.log(`Generating thumbnail: ${fullPath}`);
-      await generateThumbnails(fullPath);
+      await logger.info(`Generating thumbnail: ${fullPath}`);
+      try {
+        await generateThumbnails(fullPath);
+      } catch (err) {
+        if (err instanceof Error)
+          await logger.error(
+            `Error processing file ${fullPath}: ${err.message}`
+          );
+        else throw err;
+      }
     }
   }
 }
 
-walkDir(ROOT_DIR).catch((err) => {
-  console.error("Error walking through directory", err);
+walkDir(ROOT_DIR).catch(async (err) => {
+  await logger.error(`Error walking through directory: ${err.message}`);
 });
