@@ -1413,26 +1413,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"heic-convert@npm:^2.1.0":
-  version: 2.1.0
-  resolution: "heic-convert@npm:2.1.0"
-  dependencies:
-    heic-decode: "npm:^2.0.0"
-    jpeg-js: "npm:^0.4.4"
-    pngjs: "npm:^6.0.0"
-  checksum: 10c0/78fe882b2fc5d76d9d2b577979cd234cbeab80c95d4cd4e7b46b949eb0a1ee80d73a87901190db855a3546a8109c289d8c81b0f5d2ab29774409627f8d19c698
-  languageName: node
-  linkType: hard
-
-"heic-decode@npm:^2.0.0":
-  version: 2.0.0
-  resolution: "heic-decode@npm:2.0.0"
-  dependencies:
-    libheif-js: "npm:^1.17.1"
-  checksum: 10c0/ee99f2d7aee85c767f9334ae05e702139157a7ffb855037af51c6f128b8f150fa8a9a78bb4692f2cf493c1ccffe5533e96b0281dc7634136e29ec615d1ba903e
-  languageName: node
-  linkType: hard
-
 "ignore@npm:^5.2.0":
   version: 5.3.2
   resolution: "ignore@npm:5.3.2"
@@ -1724,13 +1704,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"jpeg-js@npm:^0.4.4":
-  version: 0.4.4
-  resolution: "jpeg-js@npm:0.4.4"
-  checksum: 10c0/4d0d5097f8e55d8bbce6f1dc32ffaf3f43f321f6222e4e6490734fdc6d005322e3bd6fb992c2df7f5b587343b1441a1c333281dc3285bc9116e369fd2a2b43a7
-  languageName: node
-  linkType: hard
-
 "js-yaml@npm:^4.1.0":
   version: 4.1.0
   resolution: "js-yaml@npm:4.1.0"
@@ -1790,13 +1763,6 @@ __metadata:
     prelude-ls: "npm:^1.2.1"
     type-check: "npm:~0.4.0"
   checksum: 10c0/effb03cad7c89dfa5bd4f6989364bfc79994c2042ec5966cb9b95990e2edee5cd8969ddf42616a0373ac49fac1403437deaf6e9050fbbaa3546093a59b9ac94e
-  languageName: node
-  linkType: hard
-
-"libheif-js@npm:^1.17.1":
-  version: 1.18.2
-  resolution: "libheif-js@npm:1.18.2"
-  checksum: 10c0/82d3f12ab730ca2737c50e473bfbf7b6ae37c300296f6ab8e25ce6ec5bc88615f210e684ca7315aa970b1bd87b3b62c607dfb52d126596ed06a46441f2a5a379
   languageName: node
   linkType: hard
 
@@ -2020,13 +1986,6 @@ __metadata:
   version: 1.0.7
   resolution: "path-parse@npm:1.0.7"
   checksum: 10c0/11ce261f9d294cc7a58d6a574b7f1b935842355ec66fba3c3fd79e0f036462eaf07d0aa95bb74ff432f9afef97ce1926c720988c6a7451d8a584930ae7de86e1
-  languageName: node
-  linkType: hard
-
-"pngjs@npm:^6.0.0":
-  version: 6.0.0
-  resolution: "pngjs@npm:6.0.0"
-  checksum: 10c0/ac23ea329b1881d1a10575aff58116dc27b894ec3f5b84ba15c7f527d21e609fbce7ba16d48f8ccb86c7ce45ceed622472765476ab2875949d4bec55e153f87a
   languageName: node
   linkType: hard
 
@@ -2484,12 +2443,10 @@ __metadata:
     eslint-plugin-import: "npm:^2.31.0"
     eslint-plugin-prettier: "npm:^5.2.1"
     fluent-ffmpeg: "npm:^2.1.3"
-    heic-convert: "npm:^2.1.0"
     prettier: "npm:^3.4.2"
     sharp: "npm:^0.33.5"
     ts-node: "npm:^10.9.2"
     typescript: "npm:^5.7.2"
-    uuid: "npm:^11.0.3"
   languageName: unknown
   linkType: soft
 
@@ -2671,15 +2628,6 @@ __metadata:
   dependencies:
     punycode: "npm:^2.1.0"
   checksum: 10c0/4ef57b45aa820d7ac6496e9208559986c665e49447cb072744c13b66925a362d96dd5a46c4530a6b8e203e5db5fe849369444440cb22ecfc26c679359e5dfa3c
-  languageName: node
-  linkType: hard
-
-"uuid@npm:^11.0.3":
-  version: 11.0.3
-  resolution: "uuid@npm:11.0.3"
-  bin:
-    uuid: dist/esm/bin/uuid
-  checksum: 10c0/cee762fc76d949a2ff9205770334699e0043d52bb766472593a25f150077c9deed821230251ea3d6ab3943a5ea137d2826678797f1d5f6754c7ce5ce27e9f7a6
   languageName: node
   linkType: hard
 

@@ -163,3 +163,4 @@ dist
 dist
 temp
 @eaDir
+.DS_Store

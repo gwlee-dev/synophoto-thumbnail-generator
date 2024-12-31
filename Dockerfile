@@ -1,16 +1,16 @@
-FROM node:18-buster AS build
-RUN apt-get update && apt-get install -y ffmpeg
+FROM node:20-bookworm-slim AS base
+RUN apt-get update
+
+FROM base AS builder
 RUN corepack enable
 WORKDIR /app
-COPY package.json yarn.lock ./
-RUN yarn install --frozen-lockfile
-COPY . .
+COPY --link  . .
+RUN yarn install --immutable
 RUN yarn build
 
-FROM node:18-buster AS production
-RUN apt-get update && apt-get install -y ffmpeg
+FROM base AS runner
+RUN apt-get install -y ffmpeg
 WORKDIR /app
-COPY --from=build /app/dist /app/dist
-COPY --from=build /app/package.json /app/yarn.lock /app/
-RUN yarn install --production
-CMD ["node", "dist/index.js"]
+COPY --from=builder /app/dist .
+RUN npm i fluent-ffmpeg sharp
+CMD ["node", "index.js"]

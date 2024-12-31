@@ -5,6 +5,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: synophoto-thumbnail-generator
+    image: gwlee/synophoto-thumbnail-generator
     volumes:
       - ./data:/app/data

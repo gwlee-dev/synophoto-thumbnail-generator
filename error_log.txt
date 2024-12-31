@@ -1,8 +1,0 @@
-Error generating thumbnail for image: data\2024\12\IMG_0981.jpg
-Error generating thumbnail for image: data\2024\12\IMG_0981.jpg
-Error generating thumbnail for image: data\2024\12\IMG_0981.jpg
-Error generating thumbnail for video: data\2024\12\IMG_0981.MOV
-Error generating thumbnail for image: data\2024\12\IMG_0981.jpg
-Error generating thumbnail for image: data\2024\12\IMG_0981.jpg
-Error generating thumbnail for image: data\2024\12\IMG_0981.jpg
-Error generating thumbnail for video: data\2024\12\IMG_0981.MOV

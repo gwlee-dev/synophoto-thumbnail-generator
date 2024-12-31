@@ -1,0 +1,26 @@
+{
+  "images": ["jpg", "jpeg", "heic", "png", "webp", "avif", "tiff"],
+  "videos": [
+    "3g2",
+    "3gp",
+    "4xm",
+    "asf",
+    "avi",
+    "f4v",
+    "flv",
+    "m4v",
+    "mkv",
+    "mov",
+    "mp4",
+    "mpeg",
+    "mpegts",
+    "mxf",
+    "ogg",
+    "rm",
+    "swf",
+    "vob",
+    "webm",
+    "wmv",
+    "yuv"
+  ]
+}
