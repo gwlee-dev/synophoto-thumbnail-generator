@@ -6,5 +6,8 @@ services:
       context: .
       dockerfile: Dockerfile
     image: gwlee/synophoto-thumbnail-generator
+    environment:
+      - MAX_CONCURRENT=5
     volumes:
       - ./data:/app/data
+      - ./logs:/app/logs
