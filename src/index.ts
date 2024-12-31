@@ -1,10 +1,11 @@
 import fs from "fs";
 import path from "path";
+import { Worker, isMainThread, parentPort, workerData } from "worker_threads";
 import SUPPORTED from "./config/supported.json";
 import _THUMB_SIZES from "./config/thumb-sizes.json";
 import { captureFrame, convertImage } from "./lib";
-import type { Thumbnail } from "./types";
 import Bottleneck from "bottleneck";
+import type { Thumbnail } from "./types";
 
 const ROOT_DIR = "./data";
 const LOG_DIR = "./logs";
@@ -62,15 +63,14 @@ async function getImageThumbnail(eaDir: string, filePath: string) {
           return;
         }
 
-        return convertImage(filePath, thumb, thumbPath)
-          .catch((err) => {
-            if (err instanceof Error) {
-              return logger.error(
-                `Error generating thumbnail for ${filePath}: ${err.message}. Thumbnail path: ${thumbPath}`
-              );
-            }
-            throw err;
-          });
+        return convertImage(filePath, thumb, thumbPath).catch((err) => {
+          if (err instanceof Error) {
+            return logger.error(
+              `Error generating thumbnail for ${filePath}: ${err.message}. Thumbnail path: ${thumbPath}`
+            );
+          }
+          throw err;
+        });
       });
   });
 
@@ -110,6 +110,30 @@ async function getVideoThumbnail(eaDir: string, filePath: string) {
   await Promise.all(generatePromises);
 }
 
+function generateThumbnailsInWorker(filePath: string) {
+  return new Promise<void>((resolve, reject) => {
+    const worker = new Worker(__filename, {
+      workerData: { filePath },
+    });
+
+    worker.on("message", (message) => {
+      if (message.status === "success") {
+        resolve();
+      }
+    });
+
+    worker.on("error", (error) => {
+      reject(error);
+    });
+
+    worker.on("exit", (code) => {
+      if (code !== 0) {
+        reject(new Error(`Worker stopped with exit code ${code}`));
+      }
+    });
+  });
+}
+
 async function walkDir(dir: string): Promise<void> {
   const entries = await fs.promises.readdir(dir, { withFileTypes: true });
 
@@ -122,9 +146,8 @@ async function walkDir(dir: string): Promise<void> {
       const ext = path.extname(entry.name).toLowerCase().slice(1);
       if (!FILE_TYPES.includes(ext)) continue;
 
-      await logger.info(`Generating thumbnails for: ${fullPath}`);
       try {
-        await limiter.schedule(() => generateThumbnails(fullPath));
+        await limiter.schedule(() => generateThumbnailsInWorker(fullPath));
         await logger.info(`Successfully processed: ${fullPath}`);
       } catch (err) {
         if (err instanceof Error)
@@ -137,6 +160,17 @@ async function walkDir(dir: string): Promise<void> {
   }
 }
 
-walkDir(ROOT_DIR).catch(async (err) => {
-  await logger.error(`Error walking through directory: ${err.message}`);
-});
+if (isMainThread) {
+  walkDir(ROOT_DIR).catch(async (err) => {
+    await logger.error(`Error walking through directory: ${err.message}`);
+  });
+} else {
+  const { filePath } = workerData;
+  generateThumbnails(filePath)
+    .then(() => {
+      parentPort?.postMessage({ status: "success" });
+    })
+    .catch((err) => {
+      parentPort?.postMessage({ status: "error", error: err.message });
+    });
+}
