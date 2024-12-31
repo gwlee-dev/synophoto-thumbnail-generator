@@ -59,13 +59,10 @@ async function getImageThumbnail(eaDir: string, filePath: string) {
 
     return fs.promises
       .access(thumbPath)
-      .then(() => true)
-      .catch(() => false)
-      .then((exists) => {
-        if (exists) {
-          return;
-        }
-
+      .then(() => {
+        logger.info(`Skipping existing thumbnail for ${filePath}: ${thumb.size}`);
+      })
+      .catch(() => {
         return convertImage(filePath, thumb, thumbPath).catch((err) => {
           if (err instanceof Error) {
             return logger.error(
@@ -87,7 +84,9 @@ async function getVideoThumbnail(eaDir: string, filePath: string) {
     `SYNOPHOTO_THUMB_${firstThumb.size}.jpg`
   );
 
-  if (!fs.existsSync(firstThumbPath)) {
+  if (fs.existsSync(firstThumbPath)) {
+    logger.info(`Skipping existing first thumbnail for ${filePath}`);
+  } else {
     try {
       await captureFrame(filePath, firstThumb, firstThumbPath);
     } catch (err) {
