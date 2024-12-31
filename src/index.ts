@@ -11,6 +11,8 @@ const ROOT_DIR = "./data";
 const LOG_DIR = "./logs";
 const THUMB_SIZES: Thumbnail[] = _THUMB_SIZES.sort((a, b) => b.width - a.width);
 const FILE_TYPES = SUPPORTED.images.concat(SUPPORTED.videos);
+const PROCESSED_FILE = "processed.json";
+const ENABLE_CHECKPOINT = process.env.ENABLE_CHECKPOINT === "true";
 
 const getLogger = (filename: string) => async (message: string) => {
   const logDirPath = path.join(LOG_DIR);
@@ -40,8 +42,9 @@ async function generateThumbnails(filePath: string): Promise<void> {
   const fileDir = path.dirname(filePath);
   const eaDir = path.join(fileDir, "@eaDir", baseName);
 
-  if (!fs.existsSync(eaDir))
+  if (!fs.existsSync(eaDir)) {
     await fs.promises.mkdir(eaDir, { recursive: true });
+  }
 
   if (SUPPORTED.images.includes(ext)) {
     await getImageThumbnail(eaDir, filePath);
@@ -110,6 +113,71 @@ async function getVideoThumbnail(eaDir: string, filePath: string) {
   await Promise.all(generatePromises);
 }
 
+async function isFolderProcessed(folderPath: string): Promise<boolean> {
+  const processedFilePath = path.join(folderPath, "@eaDir", PROCESSED_FILE);
+
+  try {
+    await fs.promises.access(processedFilePath);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function markFolderAsProcessed(folderPath: string): Promise<void> {
+  if (!ENABLE_CHECKPOINT) return;
+
+  const currentMonth = new Date().getMonth(); 
+  const folderMonth = new Date(folderPath).getMonth(); 
+
+  if (currentMonth === folderMonth) return; 
+
+  const eaDirPath = path.join(folderPath, "@eaDir");
+
+  if (!fs.existsSync(eaDirPath)) {
+    await fs.promises.mkdir(eaDirPath, { recursive: true });
+  }
+
+  const processedFilePath = path.join(eaDirPath, PROCESSED_FILE);
+  await fs.promises.writeFile(
+    processedFilePath,
+    JSON.stringify({ processed: true, timestamp: new Date().toISOString() })
+  );
+}
+
+async function walkDir(dir: string): Promise<void> {
+  const entries = await fs.promises.readdir(dir, { withFileTypes: true });
+
+  for (const entry of entries) {
+    const fullPath = path.join(dir, entry.name);
+
+    if (entry.isDirectory() && !fullPath.includes("@eaDir")) {
+      if (await isFolderProcessed(fullPath)) {
+        await logger.info(`Skipping already processed folder: ${fullPath}`);
+        continue;
+      }
+
+      await walkDir(fullPath);
+      await markFolderAsProcessed(fullPath);
+      await logger.info(`Marked folder as processed: ${fullPath}`);
+    } else if (entry.isFile()) {
+      const ext = path.extname(entry.name).toLowerCase().slice(1);
+      if (!FILE_TYPES.includes(ext)) continue;
+
+      try {
+        await limiter.schedule(() => generateThumbnailsInWorker(fullPath));
+        await logger.info(`Successfully processed: ${fullPath}`);
+      } catch (err) {
+        if (err instanceof Error)
+          await logger.error(
+            `Error processing file ${fullPath}: ${err.message}`
+          );
+        else throw err;
+      }
+    }
+  }
+}
+
 function generateThumbnailsInWorker(filePath: string) {
   return new Promise<void>((resolve, reject) => {
     const worker = new Worker(__filename, {
@@ -132,32 +200,6 @@ function generateThumbnailsInWorker(filePath: string) {
       }
     });
   });
-}
-
-async function walkDir(dir: string): Promise<void> {
-  const entries = await fs.promises.readdir(dir, { withFileTypes: true });
-
-  for (const entry of entries) {
-    const fullPath = path.join(dir, entry.name);
-
-    if (entry.isDirectory() && !fullPath.includes("@eaDir")) {
-      await walkDir(fullPath);
-    } else if (entry.isFile()) {
-      const ext = path.extname(entry.name).toLowerCase().slice(1);
-      if (!FILE_TYPES.includes(ext)) continue;
-
-      try {
-        await limiter.schedule(() => generateThumbnailsInWorker(fullPath));
-        await logger.info(`Successfully processed: ${fullPath}`);
-      } catch (err) {
-        if (err instanceof Error)
-          await logger.error(
-            `Error processing file ${fullPath}: ${err.message}`
-          );
-        else throw err;
-      }
-    }
-  }
 }
 
 if (isMainThread) {
